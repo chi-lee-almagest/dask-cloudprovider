@@ -484,6 +484,10 @@ class ECSCluster(SpecCluster):
         The docker image to use for the scheduler and worker tasks.
 
         Defaults to ``daskdev/dask:latest`` or ``rapidsai/rapidsai:latest`` if ``worker_gpu`` is set.
+    scheduler_task_definition_arn: str (optional)
+        The ARN of an existing task definition to use for launching the scheduler task.
+
+        Defaults to ``None`` which results in a new task definition being created for you.
     scheduler_cpu: int (optional)
         The amount of CPU to request for the scheduler in milli-cpu (1/1024).
 
@@ -508,6 +512,10 @@ class ECSCluster(SpecCluster):
         If passed, no scheduler task will be started, and instead the workers will connect to the passed address.
 
         Defaults to `None`, a scheduler task will start.
+    worker_task_definition_arn: str (optional)
+        The ARN of an existing task definition to use for launching worker tasks.
+
+        Defaults to ``None`` which results in a new task definition being created for you.
     worker_cpu: int (optional)
         The amount of CPU to request for worker tasks in milli-cpu (1/1024).
 
@@ -700,12 +708,14 @@ class ECSCluster(SpecCluster):
         fargate_workers=False,
         fargate_spot=False,
         image=None,
+        scheduler_task_definition_arn=None,
         scheduler_cpu=None,
         scheduler_mem=None,
         scheduler_timeout=None,
         scheduler_extra_args=None,
         scheduler_task_kwargs=None,
         scheduler_address=None,
+        worker_task_definition_arn=None,
         worker_cpu=None,
         worker_nthreads=None,
         worker_mem=None,
@@ -744,12 +754,14 @@ class ECSCluster(SpecCluster):
         self._fargate_workers = fargate_workers
         self._fargate_spot = fargate_spot
         self.image = image
+        self.scheduler_task_definition_arn = scheduler_task_definition_arn
         self._scheduler_cpu = scheduler_cpu
         self._scheduler_mem = scheduler_mem
         self._scheduler_timeout = scheduler_timeout
         self._scheduler_extra_args = scheduler_extra_args
         self._scheduler_task_kwargs = scheduler_task_kwargs
         self._scheduler_address = scheduler_address
+        self.worker_task_definition_arn = worker_task_definition_arn
         self._worker_cpu = worker_cpu
         self._worker_nthreads = worker_nthreads
         self._worker_mem = worker_mem
@@ -940,12 +952,15 @@ class ECSCluster(SpecCluster):
                 or await self._create_security_groups()
             )
 
-        self.scheduler_task_definition_arn = (
-            await self._create_scheduler_task_definition_arn()
-        )
-        self.worker_task_definition_arn = (
-            await self._create_worker_task_definition_arn()
-        )
+        if self.scheduler_task_definition_arn is None:
+            self.scheduler_task_definition_arn = (
+                await self._create_scheduler_task_definition_arn()
+            )
+
+        if self.worker_task_definition_arn is None:
+            self.worker_task_definition_arn = (
+                await self._create_worker_task_definition_arn()
+            )
 
         options = {
             "client": self._client,
